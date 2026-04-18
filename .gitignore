@@ -13,3 +13,4 @@ crash.log
 
 # Key files
 *.pem
+*.env
