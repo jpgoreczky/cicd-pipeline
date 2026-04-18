@@ -1,0 +1,120 @@
+name: CI/CD Pipeline for FastAPI
+
+# Trigger the workflow only on push events targeting the main branch
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  # Stage 1: Static Code Analysis (Linting)
+  lint:
+    name: Code Linting
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v3
+
+      - name: Setup Python Environment
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install Linting Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install flake8
+
+      - name: Execute Flake8 Analysis
+        run: |
+          # Stop the build if there are critical Python syntax errors
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+          # Treat formatting errors as warnings without failing the build
+          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+  # Stage 2: Automated Application Testing
+  test:
+    name: Automated Testing
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v3
+
+      - name: Setup Python Environment
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install Application Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Execute Pytest Suite
+        run: |
+          pytest
+
+  # Stage 3: Container Compilation and Registry Distribution
+  build-and-push:
+    name: Build and Push Image
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v3
+
+      - name: Authenticate with Docker Hub Registry
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Setup Docker Buildx Engine
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/fastapi-project:latest
+
+  # Stage 4: Remote Infrastructure Deployment
+  deploy:
+    name: Deploy to EC2
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    steps:
+      - name: Execute Remote SSH Deployment Commands
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            echo "Initiating deployment sequence on remote host..."
+            
+            # Authenticate Docker on the server to prevent API rate limiting
+            echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+            
+            # Pull the latest compiled image from the remote registry
+            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/fastapi-project:latest
+            
+            # Gracefully stop the currently running container (ignore error if missing)
+            docker stop fastapi-app || true
+            
+            # Remove the stopped container to free up the namespace (ignore error if missing)
+            docker rm fastapi-app || true
+            
+            # Instantiate the newly pulled container
+            docker run -d \
+              --name fastapi-app \
+              -p 8000:8000 \
+              --restart unless-stopped \
+              ${{ secrets.DOCKERHUB_USERNAME }}/fastapi-project:latest
+              
+            # Clean up dangling historical images to conserve EC2 disk space
+            docker image prune -f
+            
+            echo "Deployment sequence completed successfully. Application is live."
