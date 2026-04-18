@@ -1,3 +1,15 @@
-.terraform/ 
-.tfstate
-.env
+# Local Terraform directory
+.terraform/
+
+# Terraform state files (contain sensitive infrastructure details)
+*.tfstate
+*.tfstate.backup
+
+# Terraform plan files
+*.tfplan
+
+# Crash logs
+crash.log
+
+# Key files
+*.pem
