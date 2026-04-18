@@ -10,7 +10,7 @@ ENV PYTHONUNBUFFERED=1
 WORKDIR /app
 
 # Copy only the requirements file initially
-COPY requirements.txt.
+COPY requirements.txt .
 
 # Install dependencies without caching pip data
 RUN pip install --no-cache-dir -r requirements.txt
