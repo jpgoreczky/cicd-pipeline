@@ -37,6 +37,22 @@ jobs:
     name: Automated Testing
     runs-on: ubuntu-latest
     needs: lint
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: stockuser
+          POSTGRES_PASSWORD: stockpass
+          POSTGRES_DB: stockdb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
     steps:
       - name: Checkout Source Code
         uses: actions/checkout@v3
@@ -93,28 +109,14 @@ jobs:
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            echo "Initiating deployment sequence on remote host..."
-            
-            # Authenticate Docker on the server to prevent API rate limiting
             echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
-            
-            # Pull the latest compiled image from the remote registry
             docker pull ${{ secrets.DOCKERHUB_USERNAME }}/fastapi-project:latest
-            
-            # Gracefully stop the currently running container (ignore error if missing)
             docker stop fastapi-app || true
-            
-            # Remove the stopped container to free up the namespace (ignore error if missing)
             docker rm fastapi-app || true
-            
-            # Instantiate the newly pulled container
             docker run -d \
               --name fastapi-app \
               -p 8000:8000 \
               --restart unless-stopped \
+              -e DATABASE_URL="${{ secrets.DATABASE_URL }}" \
               ${{ secrets.DOCKERHUB_USERNAME }}/fastapi-project:latest
-              
-            # Clean up dangling historical images to conserve EC2 disk space
             docker image prune -f
-            
-            echo "Deployment sequence completed successfully. Application is live."

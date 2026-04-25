@@ -1,0 +1,38 @@
+name: Stock Data Ingestion
+
+on:
+  schedule:
+  # at minute 0, hour 21, and day of month, any month, Monday through Friday (1-5)
+    - cron: "0 21 * * 1-5"   # 9pm UTC = ~4pm ET, after US market close
+  workflow_dispatch:           # allow manual trigger from GitHub UI
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: stockuser
+          POSTGRES_PASSWORD: stockpass
+          POSTGRES_DB: stockdb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements.txt
+      - run: alembic upgrade head
+      - run: python -m app.ingest
