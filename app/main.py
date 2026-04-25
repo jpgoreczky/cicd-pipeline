@@ -6,9 +6,11 @@ from app.models import StockPrice
 import datetime
 from fastapi.templating import Jinja2Templates
 from fastapi.requests import Request
+from fastapi.staticfiles import StaticFiles
 
 app = FastAPI(title="Stock Price API")
 templates = Jinja2Templates(directory="app/templates")
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 @app.get("/dashboard")
 def get_dashboard(request: Request, db: Session = Depends(database.get_db)):
@@ -64,7 +66,7 @@ def get_dashboard(request: Request, db: Session = Depends(database.get_db)):
     return templates.TemplateResponse("dashboard.html", {
         "request": request,
         "prices": enriched,
-        "now": datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
+        "now": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
     })
 
 @app.get("/prices/latest")
@@ -108,7 +110,7 @@ def get_price_history(
     """
     Returns daily close prices for a given ticker over the last N days.
     """
-    since = datetime.datetime.utcnow() - datetime.timedelta(days=days)
+    since = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=days)
 
     results = (
         db.query(StockPrice)
@@ -136,7 +138,7 @@ def get_price_summary(
     Returns min, max, avg close price per ticker over the last N days.
     This is a GROUP BY aggregation query — demonstrates SQL analytics.
     """
-    since = datetime.datetime.utcnow() - datetime.timedelta(days=days)
+    since = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=days)
 
     results = (
         db.query(

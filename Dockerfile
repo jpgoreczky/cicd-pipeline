@@ -18,7 +18,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the rest of the application code
 COPY ./app ./app
 COPY alembic.ini .
-COPY alembic/ ./alembic/
+COPY ./alembic/ ./alembic/
 COPY app/ ./app/
 
 # Expose the port the application will run on
