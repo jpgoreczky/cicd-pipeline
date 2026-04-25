@@ -11,7 +11,7 @@ app = FastAPI(title="Stock Price API")
 templates = Jinja2Templates(directory="app/templates")
 
 @app.get("/dashboard")
-def get_dashboard(request: Request, db: Session = Depends(get_db)):
+def get_dashboard(request: Request, db: Session = Depends(database.get_db)):
     """
     Serves an HTML dashboard showing latest stock prices with
     daily change percentage vs the previous trading day's close.
