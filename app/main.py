@@ -4,7 +4,7 @@ from sqlalchemy import func, desc
 from app import database
 from app.models import StockPrice
 import datetime
-from fastapi.templates import Jinja2Templates
+from fastapi.templating import Jinja2Templates
 from fastapi.requests import Request
 
 app = FastAPI(title="Stock Price API")
