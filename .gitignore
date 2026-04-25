@@ -1,3 +1,18 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+dist/
+build/
+.venv/
+venv/
+env/
+
+# Environment variables - NEVER commit these
+.env
+.env.*
+
 # Local Terraform directory
 .terraform/
 
@@ -8,9 +23,21 @@
 # Terraform plan files
 *.tfplan
 
+# Database files (SQLite from local testing)
+*.db
+*.sqlite3
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
 # Crash logs
 crash.log
 
 # Key files
 *.pem
-*.env
