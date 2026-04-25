@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stock Price Dashboard</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <h1>Stock Price Dashboard</h1>
+  <p class="subtitle">End-of-day prices — updated daily after market close</p>
+
+  {% if prices %}
+  <table>
+    <thead>
+      <tr>
+        <th>Ticker</th>
+        <th>Close</th>
+        <th>Open</th>
+        <th>High</th>
+        <th>Low</th>
+        <th>Change</th>
+        <th>Volume</th>
+        <th>Date</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in prices %}
+      <tr>
+        <td class="ticker">{{ row.ticker }}</td>
+        <td class="price">${{ "%.2f"|format(row.close_price) }}</td>
+        <td class="price">${{ "%.2f"|format(row.open_price) }}</td>
+        <td class="price">${{ "%.2f"|format(row.high_price) }}</td>
+        <td class="price">${{ "%.2f"|format(row.low_price) }}</td>
+        <td>
+          {% if row.change_pct is not none %}
+            {% if row.change_pct > 0 %}
+              <span class="change up">▲ {{ "%.2f"|format(row.change_pct) }}%</span>
+            {% elif row.change_pct < 0 %}
+              <span class="change down">▼ {{ "%.2f"|format(row.change_pct|abs) }}%</span>
+            {% else %}
+              <span class="change flat">— 0.00%</span>
+            {% endif %}
+          {% else %}
+            <span class="change flat">—</span>
+          {% endif %}
+        </td>
+        <td class="volume">{{ "{:,}".format(row.volume) }}</td>
+        <td>{{ row.price_date.strftime("%b %d, %Y") }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="updated">Last fetched: {{ now }}</p>
+  {% else %}
+  <div class="no-data">No price data available. Run the ingestion pipeline first.</div>
+  {% endif %}
+</body>
+</html>

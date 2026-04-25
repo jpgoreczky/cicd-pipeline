@@ -4,9 +4,68 @@ from sqlalchemy import func, desc
 from app import database
 from app.models import StockPrice
 import datetime
+from fastapi.templates import Jinja2Templates
+from fastapi.requests import Request
 
 app = FastAPI(title="Stock Price API")
+templates = Jinja2Templates(directory="app/templates")
 
+@app.get("/dashboard")
+def get_dashboard(request: Request, db: Session = Depends(get_db)):
+    """
+    Serves an HTML dashboard showing latest stock prices with
+    daily change percentage vs the previous trading day's close.
+    """
+    # Get the latest row per ticker
+    subquery = (
+        db.query(
+            StockPrice.ticker,
+            func.max(StockPrice.price_date).label("max_date")
+        )
+        .group_by(StockPrice.ticker)
+        .subquery()
+    )
+
+    latest = (
+        db.query(StockPrice)
+        .join(subquery, (StockPrice.ticker == subquery.c.ticker) &
+                        (StockPrice.price_date == subquery.c.max_date))
+        .order_by(StockPrice.ticker)
+        .all()
+    )
+
+    # For each ticker, fetch the previous trading day's close to compute change %
+    enriched = []
+    for row in latest:
+        previous = (
+            db.query(StockPrice)
+            .filter(StockPrice.ticker == row.ticker)
+            .filter(StockPrice.price_date < row.price_date)
+            .order_by(desc(StockPrice.price_date))
+            .first()
+        )
+
+        if previous and previous.close_price:
+            change_pct = ((row.close_price - previous.close_price) / previous.close_price) * 100
+        else:
+            change_pct = None
+
+        enriched.append({
+            "ticker": row.ticker,
+            "close_price": row.close_price,
+            "open_price": row.open_price,
+            "high_price": row.high_price,
+            "low_price": row.low_price,
+            "volume": row.volume,
+            "price_date": row.price_date,
+            "change_pct": change_pct,
+        })
+
+    return templates.TemplateResponse("dashboard.html", {
+        "request": request,
+        "prices": enriched,
+        "now": datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
+    })
 
 @app.get("/prices/latest")
 def get_latest_prices(db: Session = Depends(database.get_db)):
