@@ -1,8 +1,7 @@
-version: "3.9"
-
 services:
   db:
     image: postgres:15
+    container_name: db
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -14,7 +13,8 @@ services:
     restart: unless-stopped
 
   app:
-    image: ${DOCKERHUB_USERNAME}/fastapi-project:latest
+    image: ${DOCKERHUB_USERNAME}/fastapi-project:latest # Use the image from DockerHub in production
+    container_name: app   # Explicitly set container name
     ports:
       - "8000:8000"
     environment:
